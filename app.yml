@@ -1,0 +1,136 @@
+# yaml-language-server: $schema=https://schemas.pennsieve.io/app-manifest/v1.json
+schemaVersion: "1.0"
+application:
+  name: PeacoQC Flow Cytometry QC
+  description: >-
+    Removes acquisition anomalies from each FCS file with PeacoQC (Emmaneel et al.,
+    Cytometry A 2022): stretches of events where the flow rate or the signal of a marker
+    shifts over acquisition time (clogs, bubbles, drift), found by peak detection per time
+    bin, an isolation tree and a MAD test. Optionally first drops events piled up at the
+    edge of a scatter channel's range. Reads the arcsinh-transformed files and panel.csv
+    written by fcs-prep, checks the panel's marker channels, and writes the cleaned files
+    (same names, channels and keywords, plus PENNSIEVE_QC) with a per-sample table
+    (qc/peacoqc.csv) and PeacoQC's per-file overview plot (qc/plots/<sample_id>.png).
+  type: processor
+  tags: [cytometry, flow-cytometry, fcs, quality-control, peacoqc, immunology]
+runtime:
+  cpu: 2048
+  # Measured on the 24 demo files (10.2M events): up to 3.3 GB per 600k-event file in
+  # flight, 4.3-4.5 GB peak with THREADS=2 (the default). 8 GiB leaves headroom.
+  memory: 8192
+  computeTypes: [standard]
+  timeoutSeconds: 7200
+parameters:
+  - name: MAD
+    type: number
+    label: MAD threshold
+    description: >-
+      PeacoQC's MAD parameter: a time bin is an outlier when its peak value lies more than
+      MAD median absolute deviations from the median of its channel. Higher is less strict.
+    defaultValue: 6
+    min: 0.5
+    max: 50
+  - name: IT_LIMIT
+    type: number
+    label: Isolation tree limit
+    description: >-
+      PeacoQC's IT_limit: the gain an isolation-tree split needs before it cuts off a group
+      of time bins. Lower is stricter (0.55 is the usual stricter setting). Only used
+      when the file has at least 150 bins (about 37,500 events or more).
+    defaultValue: 0.6
+    min: 0.1
+    max: 1
+  - name: DETERMINE_GOOD_CELLS
+    type: string
+    label: Methods
+    description: >-
+      Which PeacoQC tests remove events: all (isolation tree, then MAD), IT, MAD, or false
+      (no PeacoQC removal: only the margins, if REMOVE_MARGINS, and the plots).
+    defaultValue: all
+    validValues: [all, IT, MAD, "false"]
+  - name: REMOVE_MARGINS
+    type: boolean
+    label: Remove scatter margin events
+    description: >-
+      First drop events at the edge of a scatter channel's range ($PnR), i.e. saturated
+      FSC/SSC (PeacoQC's RemoveMargins on the panel's scatter channels).
+    defaultValue: true
+  - name: MAX_REMOVED_PCT
+    type: number
+    label: Flag above (% removed)
+    description: >-
+      A sample is flagged in qc/peacoqc.csv when more than this percentage of its events
+      was removed. Flagged samples are still written; review their plot.
+    defaultValue: 30
+    min: 0
+    max: 100
+  - name: CONSECUTIVE_BINS
+    type: integer
+    label: Consecutive bins
+    description: >-
+      PeacoQC's consecutive_bins: good stretches shorter than this many bins between
+      removed ones are removed too.
+    defaultValue: 5
+    min: 1
+  - name: MIN_EVENTS
+    type: integer
+    label: Minimum events
+    description: >-
+      Files with fewer events are passed through unchanged and flagged (PeacoQC needs
+      enough 500-event time bins for a stable peak and MAD estimate).
+    defaultValue: 5000
+    min: 0
+  - name: PLOTS
+    type: boolean
+    label: Plots
+    description: Write PeacoQC's overview plot per sample to qc/plots/<sample_id>.png.
+    defaultValue: true
+  - name: PLOT_DPI
+    type: integer
+    label: Plot resolution
+    description: >-
+      Resolution of the plots. PeacoQC draws 5 x 3 inches per channel (30 x 15 inches for
+      28 markers); 72 dpi gives ~2200 x 1100 pixels, 300 dpi (PeacoQC's own) ~5 MB per file.
+    defaultValue: 72
+    min: 30
+    max: 300
+  - name: THREADS
+    type: integer
+    label: Files in parallel
+    description: >-
+      How many files are processed at once (each in its own process, up to ~3.3 GB of memory
+      per 600k-event file).
+    defaultValue: 2
+    min: 1
+    max: 64
+  - name: SEED
+    type: integer
+    description: Random seed (PeacoQC itself is deterministic; kept for the workflow convention).
+    defaultValue: 42
+inputs:
+  - name: fcs
+    description: >-
+      <sample_id>.fcs files from fcs-prep (FCS 3.1, marker channels arcsinh-transformed).
+      Looked for in INPUT_DIR/fcs/, else anywhere under INPUT_DIR.
+    mediaTypes: [application/vnd.isac.fcs]
+    placement: subfolder
+    required: true
+  - name: metadata
+    description: >-
+      fcs-prep's metadata folder; panel.csv says which channels are markers (checked by
+      PeacoQC), scatter (margins) and time. Without it, channels with a $PnS are checked.
+    mediaTypes: [text/csv]
+    placement: subfolder
+    required: false
+outputs:
+  - name: fcs
+    description: >-
+      fcs/<sample_id>.fcs: the events PeacoQC kept, same channels and keywords plus
+      PENNSIEVE_QC=peacoqc;removed=<n>;... ; fcs/provenance.json.
+    mediaTypes: [application/vnd.isac.fcs, application/json]
+  - name: qc
+    description: >-
+      qc/peacoqc.csv: sample_id, events_in, events_out, pct_removed, flagged, then the
+      breakdown (margins, IT, MAD, bins) and status; qc/plots/<sample_id>.png: PeacoQC's
+      overview plot; qc/provenance.json.
+    mediaTypes: [text/csv, image/png, application/json]
