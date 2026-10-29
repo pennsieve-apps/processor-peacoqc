@@ -165,8 +165,9 @@ layouts (linked subfolders and everything flat); `make test` runs them in the im
   effect) is not detected here; that is what `batch-assess` is for.
 - Mass cytometry: set `DETERMINE_GOOD_CELLS` as usual, but PeacoQC's authors recommend its
   `remove_zeros` option for CyTOF, which this app does not expose yet.
-- The written FCS files keep every keyword of the input; flowCore writes `$BYTEORD` 4,3,2,1
-  (big-endian) where the input may have been little-endian, which readers handle.
+- The written FCS files keep every keyword of the input. flowCore's writer adds a
+  non-standard `FCSversion=3` keyword and writes big-endian (`$BYTEORD` 4,3,2,1); the header
+  says FCS3.1. Readers handle both.
 
 ## Licences
 
