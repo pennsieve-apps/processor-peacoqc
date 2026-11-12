@@ -1,5 +1,6 @@
 cff-version: "1.2.0"
-message: If you use this app, please cite it and the works it builds on, listed under references.
+message: >-
+  If you use this app, please cite the work it implements (preferred-citation), this release, and Pennsieve (RRID:SCR_021677); the other works it builds on are listed under references.
 type: software
 title: PeacoQC Flow Cytometry QC
 abstract: Removes acquisition anomalies (clogs, bubbles, drift in flow rate or signal) from each FCS file
@@ -15,6 +16,36 @@ keywords:
 - quality-control
 - peacoqc
 - immunology
+# The work this app implements; the release report's "How to cite" puts it first.
+preferred-citation:
+  type: article
+  title: 'PeacoQC: Peak-based selection of high quality cytometry data'
+  authors:
+  - family-names: Emmaneel
+    given-names: Annelies
+  - family-names: Quintelier
+    given-names: Katrien
+  - family-names: Sichien
+    given-names: Dorine
+  - family-names: Rybakowska
+    given-names: Paulina
+  - family-names: Marañón
+    given-names: Concepción
+  - family-names: Alarcón-Riquelme
+    given-names: Marta E.
+  - family-names: Van Isterdael
+    given-names: Gert
+  - family-names: Van Gassen
+    given-names: Sofie
+  - family-names: Saeys
+    given-names: Yvan
+  year: 2022
+  journal: Cytometry Part A
+  volume: 101
+  issue: '4'
+  start: '325'
+  end: '338'
+  doi: 10.1002/cyto.a.24501
 references:
 - type: article
   title: 'PeacoQC: Peak-based selection of high quality cytometry data'
